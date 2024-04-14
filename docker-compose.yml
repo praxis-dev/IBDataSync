@@ -1,0 +1,30 @@
+version: "3"
+services:
+  ibapi-service:
+    container_name: ibapi-container
+    build: ./ibapi-service
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./ibapi-service:/app
+    environment:
+      - UVICORN_CMD=uvicorn app:app --host 0.0.0.0 --port 5000 --reload
+    networks:
+      - app-network
+
+  sentinel-service:
+    container_name: sentinel-container
+    build: ./sentinel
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./sentinel:/app
+    command: ["/root/air"]
+    networks:
+      - app-network
+    depends_on:
+      - ibapi-service
+
+networks:
+  app-network:
+    driver: bridge
