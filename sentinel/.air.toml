@@ -1,9 +1,9 @@
 # .air.toml
-root = "."  # This should be the root where go.mod and your source files are located
+root = "." 
 tmp_dir = "tmp"
 
 [build]
-cmd = "go build -o ./tmp/main ./cmd/server"  # Specify the path to your main package if it's not in the root
+cmd = "go build -o ./tmp/main ./cmd/server"  
 bin = "./tmp/main"
 include_ext = ["go", "tpl", "tmpl", "html"]
 exclude_dir = ["assets", "tmp", "vendor"]
