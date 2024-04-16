@@ -10,7 +10,7 @@ class IBapi(EWrapper, EClient):
 
 @app.get("/")
 def read_root():
-    return {"Hello": "Worldddd12"}
+    return {"Hello": "Worldddd"}
 
 @app.get("/check-ibapi")
 def check_ibapi():
