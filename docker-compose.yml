@@ -2,14 +2,11 @@ version: "3.8"
 
 services:
   ibapi-service:
+    network_mode: "host"
     container_name: ibapi-container
     build: ./ibapi-service
-    ports:
-      - "5000:5000"
     volumes:
       - ./ibapi-service:/app
-    networks:
-      - app-network
 
   sentinel-service:
     container_name: sentinel-container
@@ -19,11 +16,5 @@ services:
     volumes:
       - ./sentinel:/app
     command: ["sh", "-c", "cd /app/cmd/server && fresh"]
-    networks:
-      - app-network
     depends_on:
       - ibapi-service
-
-networks:
-  app-network:
-    driver: bridge
