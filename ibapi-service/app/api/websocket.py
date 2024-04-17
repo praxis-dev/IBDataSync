@@ -8,7 +8,6 @@ async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     try:
         while True:
-            # Here we assume `app` is globally accessible or replace this with the correct way you manage state
             websocket.app.app_ib.observers.append(websocket)
             await websocket.receive_text()
     except WebSocketDisconnect:

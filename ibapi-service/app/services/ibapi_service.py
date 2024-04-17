@@ -1,11 +1,13 @@
+# services/ibapi_service.py
+
 from ibapi.client import EClient
 from ibapi.wrapper import EWrapper
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from threading import Thread
 import asyncio
-from starlette.websockets import WebSocketState
-from ..core.config import settings  # Ensure the config import path is correct
+from ..core.config import settings  
+from .notification_service import NotificationService
 
 def serialize_contract(contract):
     return {
@@ -21,22 +23,7 @@ class IBapi(EWrapper, EClient):
         self.executions = []
         self.orders = []
         self.observers = []
-
-    async def notify_observers(self, message):
-        for observer in self.observers:
-            if observer.client_state == WebSocketState.CONNECTED:
-                try:
-                    await observer.send_json(message)
-                except RuntimeError as e:
-                    print(f"Error sending message: {e}")
-
-    def schedule_notification(self, message):
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            loop.create_task(self.notify_observers(message))
-        else:
-            loop.run_until_complete(self.notify_observers(message))
-
+        self.notifier = NotificationService(self.observers)
 
 
     def execDetails(self, reqId, contract, execution):
@@ -49,7 +36,7 @@ class IBapi(EWrapper, EClient):
             "shares": execution.shares,
             "price": execution.price
         }}
-        self.schedule_notification(execution_data)
+        self.notifier.schedule_notification(execution_data)
 
     def connect_and_start(self):
         self.connect(settings.ib_host, settings.ib_port, clientId=settings.ib_client_id)
@@ -79,7 +66,7 @@ class IBapi(EWrapper, EClient):
             }
             if not any(o["orderId"] == orderId for o in self.orders):
                 self.orders.append(order_info)
-            self.schedule_notification({"type": "order", "data": order_info})
+            self.notifier.schedule_notification({"type": "order", "data": order_info})
 
 
     def orderStatus(self, orderId, status, filled, remaining, avgFillPrice, permId, parentId, lastFillPrice, clientId, whyHeld, mktCapPrice):
@@ -93,4 +80,4 @@ class IBapi(EWrapper, EClient):
                     "avgFillPrice": avgFillPrice,
                     "lastFillPrice": lastFillPrice
                 })
-                self.schedule_notification({"type": "order_update", "data": order})
+                self.notifier.schedule_notification({"type": "order_update", "data": order})
