@@ -1,13 +1,8 @@
 from fastapi import FastAPI
 from ibapi.client import EClient
 from ibapi.wrapper import EWrapper
-from ibapi.execution import ExecutionFilter
-from ibapi.contract import Contract
-
-from datetime import datetime  
-from zoneinfo import ZoneInfo  
-
-
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from threading import Thread
 import time
 
@@ -17,11 +12,10 @@ class IBapi(EWrapper, EClient):
     def __init__(self):
         EClient.__init__(self, self)
         self.executions = []
-        self.orders = []  
-
+        self.orders = []
 
     def execDetails(self, reqId, contract, execution):
-        print("Order Executed: ", execution.execId, execution.acctNumber, execution.side, execution.shares, execution.price)
+        print("Order Executed:", execution.execId, execution.acctNumber, execution.side, execution.shares, execution.price)
         self.executions.append(execution)
 
     def connect_and_start(self):
@@ -31,12 +25,12 @@ class IBapi(EWrapper, EClient):
         setattr(self, "_thread", thread)
         while not self.isConnected():
             time.sleep(1)
-        self.reqAllOpenOrders() 
-        self.reqAutoOpenOrders(True) 
-        
+        self.reqAllOpenOrders()
+        self.reqAutoOpenOrders(True)
+
     def openOrder(self, orderId, contract, order, orderState):
         current_time = datetime.now(ZoneInfo("America/New_York")).strftime('%Y-%m-%d %H:%M:%S')
-        print(f"Order Submitted at {current_time}: ", orderId, contract.symbol, order.action, order.totalQuantity, order.lmtPrice)
+        print(f"Order Submitted at {current_time}:", orderId, contract.symbol, order.action, order.totalQuantity, order.lmtPrice)
 
         if not any(o["orderId"] == orderId for o in self.orders):
             self.orders.append({
@@ -51,7 +45,7 @@ class IBapi(EWrapper, EClient):
             })
 
     def orderStatus(self, orderId, status, filled, remaining, avgFillPrice, permId, parentId, lastFillPrice, clientId, whyHeld, mktCapPrice):
-        print("Order Status: ", orderId, status, filled)
+        print("Order Status:", orderId, status, filled)
         for order in self.orders:
             if order["orderId"] == orderId:
                 order.update({
@@ -66,28 +60,22 @@ def read_root():
 
 @app.get("/check-ibapi")
 def check_ibapi():
-    global app_ib
-    return {"status": "IBapi is initialized" if 'app_ib' in globals() and app_ib.isConnected() else "IBapi not initialized"}
+    return {"status": "IBapi is initialized" if hasattr(app, 'app_ib') and app.app_ib.isConnected() else "IBapi not initialized"}
 
 @app.on_event("startup")
 async def startup_event():
-    global app_ib
-    app_ib = IBapi()
-    app_ib.connect_and_start()
+    app.app_ib = IBapi()
+    app.app_ib.connect_and_start()
 
 @app.get("/executions")
 def get_executions():
-    return {"executions": [str(e) for e in app_ib.executions]}
+    return {"executions": [str(e) for e in app.app_ib.executions]}
 
 @app.get("/orders")
 def get_orders():
-    return {"orders": [serialize_order(order) for order in app_ib.orders]}
+    return {"orders": [serialize_order(order) for order in app.app_ib.orders]}
 
 def serialize_order(order):
-    
-    eastern = ZoneInfo("America/New_York") 
-    current_time = datetime.now(eastern)
-
     return {
         "orderId": order["orderId"],
         "symbol": order["contract"].symbol,
@@ -98,6 +86,5 @@ def serialize_order(order):
         "status": order["status"],
         "filled": order["filled"],
         "remaining": order["remaining"],
-        "submissionTime": current_time.strftime('%Y-%m-%d %H:%M:%S')
-
+        "submissionTime": order["submissionTime"]
     }
