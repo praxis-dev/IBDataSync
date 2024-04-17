@@ -1,6 +1,9 @@
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI
+
 from .api.routes import router as api_router
 from .api.websocket import router as ws_router
+from .core.config import settings
+
 from ibapi.client import EClient
 from ibapi.wrapper import EWrapper
 from datetime import datetime
@@ -61,7 +64,7 @@ class IBapi(EWrapper, EClient):
         self.schedule_notification(execution_data)
 
     def connect_and_start(self):
-        self.connect("127.0.0.1", 7496, clientId=0)
+        self.connect(settings.ib_host, settings.ib_port, clientId=settings.ib_client_id)
         thread = Thread(target=self.run_thread, daemon=True)
         thread.start()
 
@@ -71,7 +74,7 @@ class IBapi(EWrapper, EClient):
         self.run()
 
     def openOrder(self, orderId, contract, order, orderState):
-            current_time = datetime.now(ZoneInfo("America/New_York")).strftime('%Y-%m-%d %H:%M:%S')
+            current_time = datetime.now(ZoneInfo(settings.timezone)).strftime('%Y-%m-%d %H:%M:%S')
             print(f"Order Submitted at {current_time}:", orderId, contract.symbol, order.action, order.totalQuantity, order.lmtPrice)
             order_info = {
                 "orderId": orderId,
