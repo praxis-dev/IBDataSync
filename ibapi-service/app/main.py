@@ -4,6 +4,10 @@ from ibapi.wrapper import EWrapper
 from ibapi.execution import ExecutionFilter
 from ibapi.contract import Contract
 
+from datetime import datetime  
+from zoneinfo import ZoneInfo  
+
+
 from threading import Thread
 import time
 
@@ -31,16 +35,20 @@ class IBapi(EWrapper, EClient):
         self.reqAutoOpenOrders(True) 
         
     def openOrder(self, orderId, contract, order, orderState):
-        print("Order Submitted: ", orderId, contract.symbol, order.action, order.totalQuantity, order.lmtPrice)
-        self.orders.append({
-            "orderId": orderId,
-            "contract": contract,
-            "order": order,
-            "orderState": orderState,
-            "status": "",
-            "filled": 0,
-            "remaining": 0
-        })
+        current_time = datetime.now(ZoneInfo("America/New_York")).strftime('%Y-%m-%d %H:%M:%S')
+        print(f"Order Submitted at {current_time}: ", orderId, contract.symbol, order.action, order.totalQuantity, order.lmtPrice)
+
+        if not any(o["orderId"] == orderId for o in self.orders):
+            self.orders.append({
+                "orderId": orderId,
+                "contract": contract,
+                "order": order,
+                "orderState": orderState,
+                "status": orderState.status,
+                "filled": 0,
+                "remaining": order.totalQuantity,
+                "submissionTime": current_time
+            })
 
     def orderStatus(self, orderId, status, filled, remaining, avgFillPrice, permId, parentId, lastFillPrice, clientId, whyHeld, mktCapPrice):
         print("Order Status: ", orderId, status, filled)
@@ -76,6 +84,10 @@ def get_orders():
     return {"orders": [serialize_order(order) for order in app_ib.orders]}
 
 def serialize_order(order):
+    
+    eastern = ZoneInfo("America/New_York") 
+    current_time = datetime.now(eastern)
+
     return {
         "orderId": order["orderId"],
         "symbol": order["contract"].symbol,
@@ -86,4 +98,6 @@ def serialize_order(order):
         "status": order["status"],
         "filled": order["filled"],
         "remaining": order["remaining"],
+        "submissionTime": current_time.strftime('%Y-%m-%d %H:%M:%S')
+
     }
