@@ -1,16 +1,19 @@
 from fastapi import FastAPI, WebSocket
+from .api.routes import router as api_router
+from .api.websocket import router as ws_router
 from ibapi.client import EClient
 from ibapi.wrapper import EWrapper
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from threading import Thread
-import time
 import asyncio
-from fastapi.websockets import WebSocketDisconnect
 from starlette.websockets import WebSocketState
 
 
 app = FastAPI()
+
+app.include_router(api_router)
+app.include_router(ws_router)
 
 def serialize_contract(contract):
     """ Convert a Contract object into a JSON-serializable dictionary. """
@@ -101,31 +104,7 @@ class IBapi(EWrapper, EClient):
                 })
                 self.schedule_notification({"type": "order_update", "data": order})
 
-
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    app.app_ib.observers.append(websocket)
-    try:
-        while True:
-            await websocket.receive_text()
-    except WebSocketDisconnect:
-        print("WebSocket disconnected.")
-    except Exception as e:
-        print(f"WebSocket error: {e}")
-    finally:
-        app.app_ib.observers.remove(websocket)
-        await websocket.close()
-
 @app.on_event("startup")
 async def startup_event():
     app.app_ib = IBapi()
     app.app_ib.connect_and_start()
-
-@app.get("/")
-def read_root():
-    return {"Hello": "World"}
-
-@app.get("/check-ibapi")
-def check_ibapi():
-    return {"status": "IBapi is initialized" if hasattr(app, 'app_ib') and app.app_ib.isConnected() else "IBapi not initialized"}
