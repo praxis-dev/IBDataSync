@@ -21,6 +21,7 @@ RUN go install github.com/pilu/fresh@latest
 
 WORKDIR /app
 
+COPY --from=builder /out/main /app/
 COPY . .
 
 EXPOSE 8080
