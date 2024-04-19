@@ -22,10 +22,10 @@ var (
 
 func main() {
 
-	err := godotenv.Load()
-    if err != nil {
-        log.Fatal("Error loading .env file")
-    }
+	err := godotenv.Load("../../.env")
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
 
 	apiToken = os.Getenv("API_TOKEN")
     apiURL = os.Getenv("API_URL")
