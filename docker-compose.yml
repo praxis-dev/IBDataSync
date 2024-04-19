@@ -7,10 +7,9 @@ services:
       - ./ibapi-service:/app
 
   sentinel-service:
+    network_mode: "host"
     container_name: sentinel-container
     build: ./sentinel
-    ports:
-      - "8080:8080"
     volumes:
       - ./sentinel:/app
     command: ["sh", "-c", "cd /app/cmd/server && fresh"]
