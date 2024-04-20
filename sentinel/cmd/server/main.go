@@ -1,12 +1,13 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -41,17 +42,43 @@ func main() {
 	e.Logger.Fatal(e.Start(":8080"))
 }
 
-func sendResult(data interface{}) {
-    payload, err := json.Marshal(map[string]interface{}{
-        "api_token": apiToken,
-        "data": data, 
-    })
+func sendResult(data []byte) {
+    var receivedData map[string]interface{}
+    err := json.Unmarshal(data, &receivedData)
     if err != nil {
-        log.Fatalf("Error marshalling payload: %v", err)
+        log.Printf("Error unmarshalling received data: %v", err)
         return
     }
 
-    resp, err := http.Post(apiURL, "application/json", bytes.NewReader(payload))
+    if _, ok := receivedData["command"]; !ok {
+        receivedData["command"] = "orderStatus"
+    }
+
+    modifiedData, err := json.Marshal(receivedData)
+    if err != nil {
+        log.Printf("Error marshalling modified data: %v", err)
+        return
+    }
+
+    jsonData := string(modifiedData)
+
+    log.Printf("Sending data: %s\n", jsonData)
+
+    form := url.Values{}
+    form.Add("api_token", apiToken)
+    form.Add("data", jsonData)
+
+    formData := strings.NewReader(form.Encode())
+
+    req, err := http.NewRequest("POST", apiURL, formData)
+    if err != nil {
+        log.Fatalf("Error creating POST request: %v", err)
+        return
+    }
+    req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+    client := &http.Client{}
+    resp, err := client.Do(req)
     if err != nil {
         log.Fatalf("Error sending POST request: %v", err)
         return
