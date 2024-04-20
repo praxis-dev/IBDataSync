@@ -42,36 +42,35 @@ func main() {
 }
 
 func sendResult(data interface{}) {
-	payload, err := json.Marshal(map[string]interface{}{
-		"api_token": apiToken,
-		"data":      data,
-	})
-	if err != nil {
-		log.Fatalf("Error marshalling data: %v", err)
-		return
-	}
+    payload, err := json.Marshal(map[string]interface{}{
+        "api_token": apiToken,
+        "data": data, 
+    })
+    if err != nil {
+        log.Fatalf("Error marshalling payload: %v", err)
+        return
+    }
 
-	resp, err := http.Post(apiURL, "application/json", bytes.NewReader(payload))
-	if err != nil {
-		log.Fatalf("Error sending POST request: %v", err)
-		return
-	}
-	defer resp.Body.Close()
+    resp, err := http.Post(apiURL, "application/json", bytes.NewReader(payload))
+    if err != nil {
+        log.Fatalf("Error sending POST request: %v", err)
+        return
+    }
+    defer resp.Body.Close()
 
-	bodyBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		log.Printf("Error reading response body: %v", err)
-		return
-	}
-	body := string(bodyBytes)
+    bodyBytes, err := io.ReadAll(resp.Body)
+    if err != nil {
+        log.Printf("Error reading response body: %v", err)
+        return
+    }
+    body := string(bodyBytes)
 
-	if resp.StatusCode == http.StatusOK {
-		log.Println("Data sent successfully and received OK response from the server.")
-	} else {
-		log.Printf("Received non-OK response: %d, response body: %s", resp.StatusCode, body)
-	}
+    if resp.StatusCode != http.StatusOK {
+        log.Printf("Received non-OK response: %d, response body: %s", resp.StatusCode, body)
+    } else {
+        log.Println("Data sent successfully and received OK response from the server.")
+    }
 }
-
 
 func startWebSocketClient() {
 	dialer := websocket.Dialer{
