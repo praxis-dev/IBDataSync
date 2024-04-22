@@ -74,6 +74,7 @@ class IBapi(EWrapper, EClient):
         for order in self.orders:
             if order["orderId"] == orderId:
                 order.update({
+                    "permId": permId,
                     "status": status,
                     "filled": filled,
                     "remaining": remaining,
