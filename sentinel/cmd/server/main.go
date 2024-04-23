@@ -2,15 +2,16 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
@@ -43,6 +44,16 @@ func main() {
 	e.Logger.Fatal(e.Start(":8080"))
 }
 
+func init() {
+    rand.Seed(time.Now().UnixNano())
+}
+
+func generateCustomOrderId() string {
+    randomNumber := rand.Intn(900000) + 100000
+    return fmt.Sprintf("prax%d", randomNumber)
+}
+
+
 func sendResult(data []byte) {
     var receivedData map[string]interface{}
     err := json.Unmarshal(data, &receivedData)
@@ -51,7 +62,7 @@ func sendResult(data []byte) {
         return
     }
 
-    newOrderId := uuid.New().String()
+    newOrderId := generateCustomOrderId()
 
     if orderData, ok := receivedData["data"].(map[string]interface{}); ok {
         orderData["orderId"] = newOrderId
