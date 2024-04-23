@@ -50,14 +50,15 @@ class IBapi(EWrapper, EClient):
 
     def openOrder(self, orderId, contract, order, orderState):
             current_time = datetime.now(ZoneInfo(settings.timezone)).strftime('%Y-%m-%d %H:%M:%S')
-            print(f"Order Submitted at {current_time}:", orderId, contract.symbol, order.action, order.totalQuantity, order.lmtPrice)
+            print(f"Order Submitted at {current_time}:", orderId, contract.symbol, order.action, order.totalQuantity, order.triggerPrice)
             order_info = {
                 "orderId": orderId,
                 "contract": serialize_contract(contract),  
                 "order": {
                     "action": order.action,
+                    "orderType": order.orderType,   
+                    "orderAuxPrice": order.auxPrice,    
                     "totalQuantity": order.totalQuantity,
-                    "lmtPrice": order.lmtPrice
                 },
                 "orderState": {
                     "status": orderState.status
