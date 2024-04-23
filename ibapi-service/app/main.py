@@ -10,7 +10,6 @@ app.include_router(api_router)
 app.include_router(ws_router)
 
 def serialize_contract(contract):
-    """ Convert a Contract object into a JSON-serializable dictionary. """
     return {
         "symbol": contract.symbol,
         "secType": contract.secType,

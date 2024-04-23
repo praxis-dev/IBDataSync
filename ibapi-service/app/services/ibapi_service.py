@@ -26,17 +26,17 @@ class IBapi(EWrapper, EClient):
         self.notifier = NotificationService(self.observers)
 
 
-    def execDetails(self, reqId, contract, execution):
-        print("Order Executed:", execution.execId, execution.acctNumber, execution.side, execution.shares, execution.price)
-        self.executions.append(execution)
-        execution_data = {"type": "execution", "data": {
-            "execId": execution.execId,
-            "acctNumber": execution.acctNumber,
-            "side": execution.side,
-            "shares": execution.shares,
-            "price": execution.price
-        }}
-        self.notifier.schedule_notification(execution_data)
+    # def execDetails(self, reqId, contract, execution):
+    #     print("Order Executed:", execution.execId, execution.acctNumber, execution.side, execution.shares, execution.price)
+    #     self.executions.append(execution)
+    #     execution_data = {"type": "execution", "data": {
+    #         "execId": execution.execId,
+    #         "acctNumber": execution.acctNumber,
+    #         "side": execution.side,
+    #         "shares": execution.shares,
+    #         "price": execution.price
+    #     }}
+    #     self.notifier.schedule_notification(execution_data)
 
     def connect_and_start(self):
         self.connect(settings.ib_host, settings.ib_port, clientId=settings.ib_client_id)

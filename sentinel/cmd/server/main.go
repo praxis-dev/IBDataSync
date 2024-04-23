@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
@@ -50,6 +51,16 @@ func sendResult(data []byte) {
         return
     }
 
+    newOrderId := uuid.New().String()
+
+    if orderData, ok := receivedData["data"].(map[string]interface{}); ok {
+        orderData["orderId"] = newOrderId
+
+        if order, ok := orderData["order"].(map[string]interface{}); ok {
+            delete(order, "orderId")
+        }
+    }
+
     if _, ok := receivedData["command"]; !ok {
         receivedData["command"] = "orderStatus"
     }
@@ -61,13 +72,11 @@ func sendResult(data []byte) {
     }
 
     jsonData := string(modifiedData)
-
     log.Printf("Sending data: %s\n", jsonData)
 
     form := url.Values{}
     form.Add("api_token", apiToken)
     form.Add("data", jsonData)
-
     formData := strings.NewReader(form.Encode())
 
     req, err := http.NewRequest("POST", apiURL, formData)
@@ -98,6 +107,7 @@ func sendResult(data []byte) {
         log.Println("Data sent successfully and received OK response from the server.")
     }
 }
+
 
 func startWebSocketClient() {
 	dialer := websocket.Dialer{
