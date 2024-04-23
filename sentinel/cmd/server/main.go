@@ -68,7 +68,10 @@ func sendResult(data []byte) {
         orderData["orderId"] = newOrderId
 
         if order, ok := orderData["order"].(map[string]interface{}); ok {
-            delete(order, "orderId")
+            // Remove the totalQuantity field
+            delete(order, "totalQuantity")
+            // Manually add the percentageAllocation field
+            order["percentageAllocation"] = 7.5
         }
     }
 
