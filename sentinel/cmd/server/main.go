@@ -53,6 +53,35 @@ func generateCustomOrderId() string {
     return fmt.Sprintf("prax%d", randomNumber)
 }
 
+type OrderDetails struct {
+    Details    map[string]interface{}
+    Timestamp  time.Time
+}
+
+var orderCache = make(map[int64]OrderDetails)
+
+
+
+func isEqual(map1, map2 map[string]interface{}) bool {
+    json1, err1 := json.Marshal(map1)
+    json2, err2 := json.Marshal(map2)
+    if err1 != nil || err2 != nil {
+        return false
+    }
+    return string(json1) == string(json2)
+}
+
+func getOrderDetails(orderData map[string]interface{}) map[string]interface{} {
+    orderDetails := make(map[string]interface{})
+    orderDetails["permId"] = orderData["permId"]
+    orderDetails["status"] = orderData["status"]
+    orderDetails["filled"] = orderData["filled"]
+    orderDetails["remaining"] = orderData["remaining"]
+    orderDetails["avgFillPrice"] = orderData["avgFillPrice"]
+    orderDetails["lastFillPrice"] = orderData["lastFillPrice"]
+    return orderDetails
+}
+
 
 func sendResult(data []byte) {
     var receivedData map[string]interface{}
@@ -60,6 +89,29 @@ func sendResult(data []byte) {
     if err != nil {
         log.Printf("Error unmarshalling received data: %v", err)
         return
+    }
+    if orderData, ok := receivedData["data"].(map[string]interface{}); ok {
+        if permID, ok := orderData["permId"].(float64); ok {
+            permIDInt := int64(permID)
+            orderDetails := getOrderDetails(orderData)
+
+            isDuplicate := false
+            for _, cachedOrder := range orderCache {
+                if isEqual(cachedOrder.Details, orderDetails) {
+                    isDuplicate = true
+                    break
+                }
+            }
+
+            if isDuplicate {
+                log.Printf("Duplicate order update detected for permId: %d, skipping processing", permIDInt)
+                return
+            }
+
+            orderCache[permIDInt] = OrderDetails{
+                Details: orderDetails,
+            }
+        }
     }
 
     newOrderId := generateCustomOrderId()
