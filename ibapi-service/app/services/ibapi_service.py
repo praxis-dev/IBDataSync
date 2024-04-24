@@ -71,7 +71,6 @@ class IBapi(EWrapper, EClient):
                 "permId": permId,
                 "status": status,
                 "filled": filled,
-                "remaining": remaining,
                 "avgFillPrice": avgFillPrice,
                 "lastFillPrice": lastFillPrice
             })
