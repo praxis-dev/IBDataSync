@@ -48,14 +48,15 @@ class IBapi(EWrapper, EClient):
 
     def openOrder(self, orderId, contract, order, orderState):
         current_time = datetime.now(ZoneInfo(settings.timezone)).strftime('%Y-%m-%d %H:%M:%S')
-        print(f"Order Submitted at {current_time}:", orderId, contract.symbol, order.action, order.totalQuantity, order.lmtPrice)
+        print(f"Order Submitted at {current_time}:", orderId, contract.symbol, order.action, order.totalQuantity, order.lmtPrice, order.orderType)
         order_info = {
             "orderId": orderId,
             "contract": serialize_contract(contract),
             "order": {
                 "action": order.action,
+                "orderType": order.orderType,
                 "totalQuantity": order.totalQuantity,
-                "lmtPrice": order.lmtPrice
+                "auxPrice": order.auxPrice,
             },
             "orderState": {
                 "status": orderState.status
@@ -63,13 +64,14 @@ class IBapi(EWrapper, EClient):
             "submissionTime": current_time
         }
         self.orders[orderId] = order_info
-        self.notifier.schedule_notification({"type": "order", "data": order_info})
+        # self.notifier.schedule_notification({"type": "order", "data": order_info})
 
     def orderStatus(self, orderId, status, filled, remaining, avgFillPrice, permId, parentId, lastFillPrice, clientId, whyHeld, mktCapPrice):
         print("Order Status:", orderId, status, filled)
         if orderId in self.orders:
             order = self.orders[orderId]
             order.update({
+                "permId": permId,
                 "status": status,
                 "filled": filled,
                 "remaining": remaining,
