@@ -64,7 +64,6 @@ class IBapi(EWrapper, EClient):
             "submissionTime": current_time
         }
         self.orders[orderId] = order_info
-        # self.notifier.schedule_notification({"type": "order", "data": order_info})
 
     def orderStatus(self, orderId, status, filled, remaining, avgFillPrice, permId, parentId, lastFillPrice, clientId, whyHeld, mktCapPrice):
         print("Order Status:", orderId, status, filled)
