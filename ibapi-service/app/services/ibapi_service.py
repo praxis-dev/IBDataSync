@@ -57,9 +57,7 @@ class IBapi(EWrapper, EClient):
                 "orderType": order.orderType,
                 "totalQuantity": order.totalQuantity,
                 "auxPrice": order.auxPrice,
-            },
-            "orderState": {
-                "status": orderState.status
+                "duration": order.tif,
             },
             "submissionTime": current_time
         }
