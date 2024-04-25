@@ -6,8 +6,8 @@ import (
 	"os"
 	"time"
 
-	"sentinel/httpclient"
-	"sentinel/orderprocessor"
+	httpclient "sentinel/http_client"
+	orderprocessor "sentinel/order_processor"
 	"sentinel/websocket"
 
 	"github.com/joho/godotenv"
