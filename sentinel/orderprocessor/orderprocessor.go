@@ -1,8 +1,6 @@
 package orderprocessor
 
 import (
-	"sentinel/httpclient"
-
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,36 +8,10 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
-	"time"
+
+	"sentinel/httpclient"
+	"sentinel/ordercache"
 )
-
-type OrderDetails struct {
-    Details   map[string]interface{}
-    Timestamp time.Time
-}
-
-var orderCache = make(map[int64]OrderDetails)
-
-func isEqual(map1, map2 map[string]interface{}) bool {
-    json1, err1 := json.Marshal(map1)
-    json2, err2 := json.Marshal(map2)
-    if err1 != nil || err2 != nil {
-        return false
-    }
-    return string(json1) == string(json2)
-}
-
-func getOrderDetails(orderData map[string]interface{}) map[string]interface{} {
-    orderDetails := make(map[string]interface{})
-    orderDetails["permId"] = orderData["permId"]
-    orderDetails["status"] = orderData["status"]
-    orderDetails["filled"] = orderData["filled"]
-    orderDetails["remaining"] = orderData["remaining"]
-    orderDetails["avgFillPrice"] = orderData["avgFillPrice"]
-    orderDetails["lastFillPrice"] = orderData["lastFillPrice"]
-    return orderDetails
-}
-
 
 func generateCustomOrderId() string {
     randomNumber := rand.Intn(900000) + 100000
@@ -47,10 +19,9 @@ func generateCustomOrderId() string {
 }
 
 type OrderProcessor struct {
-    apiToken string
-    apiURL   string
-	httpClient httpclient.Client
-
+    apiToken   string
+    apiURL     string
+    httpClient httpclient.Client
 }
 
 func NewOrderProcessor(apiToken, apiURL string, httpClient httpclient.Client) *OrderProcessor {
@@ -62,36 +33,50 @@ func NewOrderProcessor(apiToken, apiURL string, httpClient httpclient.Client) *O
 }
 
 func (op *OrderProcessor) ProcessOrder(data []byte) {
-    var receivedData map[string]interface{}
-    err := json.Unmarshal(data, &receivedData)
+    receivedData, err := op.unmarshallData(data)
     if err != nil {
         log.Printf("Error unmarshalling received data: %v", err)
         return
     }
+
+    permIDInt, orderDetails, ok := op.extractOrderDetails(receivedData)
+    if ok {
+        if ordercache.IsDuplicate(permIDInt, orderDetails) {
+            log.Printf("Duplicate order update detected for permId: %d, skipping processing", permIDInt)
+            return
+        }
+        ordercache.CacheOrder(permIDInt, orderDetails)
+    }
+
+    processedData := op.processOrderData(receivedData)
+
+    modifiedData, err := op.marshallData(processedData)
+    if err != nil {
+        log.Printf("Error marshalling modified data: %v", err)
+        return
+    }
+
+    op.sendAPIRequest(modifiedData)
+}
+
+func (op *OrderProcessor) unmarshallData(data []byte) (map[string]interface{}, error) {
+    var receivedData map[string]interface{}
+    err := json.Unmarshal(data, &receivedData)
+    return receivedData, err
+}
+
+func (op *OrderProcessor) extractOrderDetails(receivedData map[string]interface{}) (int64, map[string]interface{}, bool) {
     if orderData, ok := receivedData["data"].(map[string]interface{}); ok {
         if permID, ok := orderData["permId"].(float64); ok {
             permIDInt := int64(permID)
-            orderDetails := getOrderDetails(orderData)
-
-            isDuplicate := false
-            for _, cachedOrder := range orderCache {
-                if isEqual(cachedOrder.Details, orderDetails) {
-                    isDuplicate = true
-                    break
-                }
-            }
-
-            if isDuplicate {
-                log.Printf("Duplicate order update detected for permId: %d, skipping processing", permIDInt)
-                return
-            }
-
-            orderCache[permIDInt] = OrderDetails{
-                Details: orderDetails,
-            }
+            orderDetails := ordercache.GetOrderDetails(orderData)
+            return permIDInt, orderDetails, true
         }
     }
+    return 0, nil, false
+}
 
+func (op *OrderProcessor) processOrderData(receivedData map[string]interface{}) map[string]interface{} {
     newOrderId := generateCustomOrderId()
 
     if orderData, ok := receivedData["data"].(map[string]interface{}); ok {
@@ -107,23 +92,25 @@ func (op *OrderProcessor) ProcessOrder(data []byte) {
         receivedData["command"] = "orderStatus"
     }
 
-    modifiedData, err := json.Marshal(receivedData)
-    if err != nil {
-        log.Printf("Error marshalling modified data: %v", err)
-        return
-    }
+    return receivedData
+}
 
-    jsonData := string(modifiedData)
+func (op *OrderProcessor) marshallData(data map[string]interface{}) ([]byte, error) {
+    return json.Marshal(data)
+}
+
+func (op *OrderProcessor) sendAPIRequest(data []byte) {
+    jsonData := string(data)
     log.Printf("Sending data: %s\n", jsonData)
 
     form := url.Values{}
     form.Add("api_token", op.apiToken)
     form.Add("data", jsonData)
-	resp, err := op.httpClient.PostForm(op.apiURL, form)
+
+    resp, err := op.httpClient.PostForm(op.apiURL, form)
     if err != nil {
         log.Fatalf("Error sending POST request: %v", err)
         return
-    
     }
     defer resp.Body.Close()
 
