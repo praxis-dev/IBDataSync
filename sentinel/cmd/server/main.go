@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"sentinel/httpclient"
 	"sentinel/orderprocessor"
 	"sentinel/websocket"
 
@@ -35,7 +36,9 @@ func main() {
     }
 	e := echo.New()
 
-    orderProcessor := orderprocessor.NewOrderProcessor(apiToken, apiURL)
+    httpClient := httpclient.NewClient()
+
+    orderProcessor := orderprocessor.NewOrderProcessor(apiToken, apiURL, httpClient)
 
 	messageChan := make(chan []byte)
 	go websocket.StartWebSocketClient(wsURL, messageChan)

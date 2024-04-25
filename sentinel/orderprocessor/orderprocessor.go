@@ -1,6 +1,8 @@
 package orderprocessor
 
 import (
+	"sentinel/httpclient"
+
 	"encoding/json"
 	"fmt"
 	"io"
@@ -8,7 +10,6 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
-	"strings"
 	"time"
 )
 
@@ -48,12 +49,15 @@ func generateCustomOrderId() string {
 type OrderProcessor struct {
     apiToken string
     apiURL   string
+	httpClient httpclient.Client
+
 }
 
-func NewOrderProcessor(apiToken, apiURL string) *OrderProcessor {
+func NewOrderProcessor(apiToken, apiURL string, httpClient httpclient.Client) *OrderProcessor {
     return &OrderProcessor{
-        apiToken: apiToken,
-        apiURL:   apiURL,
+        apiToken:   apiToken,
+        apiURL:     apiURL,
+        httpClient: httpClient,
     }
 }
 
@@ -115,20 +119,11 @@ func (op *OrderProcessor) ProcessOrder(data []byte) {
     form := url.Values{}
     form.Add("api_token", op.apiToken)
     form.Add("data", jsonData)
-    formData := strings.NewReader(form.Encode())
-
-    req, err := http.NewRequest("POST", op.apiURL, formData)
-    if err != nil {
-        log.Fatalf("Error creating POST request: %v", err)
-        return
-    }
-    req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-
-    client := &http.Client{}
-    resp, err := client.Do(req)
+	resp, err := op.httpClient.PostForm(op.apiURL, form)
     if err != nil {
         log.Fatalf("Error sending POST request: %v", err)
         return
+    
     }
     defer resp.Body.Close()
 
