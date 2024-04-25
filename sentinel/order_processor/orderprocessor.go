@@ -1,7 +1,6 @@
 package orderprocessor
 
 import (
-	"encoding/json"
 	"io"
 	"log"
 	"net/http"
@@ -27,7 +26,7 @@ func NewOrderProcessor(apiToken, apiURL string, httpClient httpclient.Client) *O
 }
 
 func (op *OrderProcessor) ProcessOrder(data []byte) {
-    receivedData, err := op.unmarshallData(data)
+    receivedData, err := UnmarshallData(data)
     if err != nil {
         log.Printf("Error unmarshalling received data: %v", err)
         return
@@ -43,20 +42,13 @@ func (op *OrderProcessor) ProcessOrder(data []byte) {
     }
 
     processedData := op.processOrderData(receivedData)
-
-    modifiedData, err := op.marshallData(processedData)
+    modifiedData, err := MarshallData(processedData)
     if err != nil {
         log.Printf("Error marshalling modified data: %v", err)
         return
     }
 
     op.sendAPIRequest(modifiedData)
-}
-
-func (op *OrderProcessor) unmarshallData(data []byte) (map[string]interface{}, error) {
-    var receivedData map[string]interface{}
-    err := json.Unmarshal(data, &receivedData)
-    return receivedData, err
 }
 
 func (op *OrderProcessor) extractOrderDetails(receivedData map[string]interface{}) (int64, map[string]interface{}, bool) {
@@ -87,10 +79,6 @@ func (op *OrderProcessor) processOrderData(receivedData map[string]interface{}) 
     }
 
     return receivedData
-}
-
-func (op *OrderProcessor) marshallData(data map[string]interface{}) ([]byte, error) {
-    return json.Marshal(data)
 }
 
 func (op *OrderProcessor) sendAPIRequest(data []byte) {
