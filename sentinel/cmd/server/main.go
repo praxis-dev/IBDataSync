@@ -12,7 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gorilla/websocket"
+	"sentinel/websocket"
+
 	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
 )
@@ -39,7 +40,15 @@ func main() {
     }
 	e := echo.New()
 
-	go startWebSocketClient()
+
+	messageChan := make(chan []byte)
+	go websocket.StartWebSocketClient(wsURL, messageChan)
+
+	go func() {
+		for message := range messageChan {
+			sendResult(message)
+		}
+	}()
 
 	e.Logger.Fatal(e.Start(":8080"))
 }
@@ -170,31 +179,4 @@ func sendResult(data []byte) {
     } else {
         log.Println("Data sent successfully and received OK response from the server.")
     }
-}
-
-
-func startWebSocketClient() {
-	dialer := websocket.Dialer{
-		HandshakeTimeout: 45 * time.Second,
-	}
-
-	conn, _, err := dialer.Dial(wsURL, nil)
-	if err != nil {
-		log.Fatal("Error connecting to WebSocket server:", err)
-		return
-	}
-	defer conn.Close()
-
-	log.Println("Connected to WebSocket server")
-
-	for {
-		_, message, err := conn.ReadMessage()
-		if err != nil {
-			log.Println("Error reading from WebSocket:", err)
-			return
-		}
-		log.Printf("Received message: %s\n", message)
-		sendResult(message)
-	}
-
 }
