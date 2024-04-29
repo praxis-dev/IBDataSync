@@ -1,10 +1,7 @@
 package orderprocessor
 
 import (
-	"io"
 	"log"
-	"net/http"
-	"net/url"
 
 	customorderid "sentinel/custom_orderid"
 	httpclient "sentinel/http_client"
@@ -15,13 +12,18 @@ type OrderProcessor struct {
     apiToken   string
     apiURL     string
     httpClient httpclient.Client
+    apiClient *APIClient
 }
 
 func NewOrderProcessor(apiToken, apiURL string, httpClient httpclient.Client) *OrderProcessor {
+    apiClient := NewAPIClient(apiToken, apiURL, httpClient)
+
     return &OrderProcessor{
         apiToken:   apiToken,
         apiURL:     apiURL,
         httpClient: httpClient,
+        apiClient: apiClient,
+
     }
 }
 
@@ -48,7 +50,7 @@ func (op *OrderProcessor) ProcessOrder(data []byte) {
         return
     }
 
-    op.sendAPIRequest(modifiedData)
+    op.apiClient.SendAPIRequest(modifiedData)
 }
 
 func (op *OrderProcessor) extractOrderDetails(receivedData map[string]interface{}) (int64, map[string]interface{}, bool) {
@@ -70,42 +72,12 @@ func (op *OrderProcessor) processOrderData(receivedData map[string]interface{}) 
 
         if order, ok := orderData["order"].(map[string]interface{}); ok {
             delete(order, "totalQuantity")
-            order["percentageAllocation"] = 7.5
+            order["percentageAllocation"] = 3.75
+            order["testOrder"] = true
         }
     }
 
-    if _, ok := receivedData["command"]; !ok {
-        receivedData["command"] = "orderStatus"
-    }
+    receivedData["command"] = "orderStatusNew"
 
     return receivedData
-}
-
-func (op *OrderProcessor) sendAPIRequest(data []byte) {
-    jsonData := string(data)
-    log.Printf("Sending data: %s\n", jsonData)
-
-    form := url.Values{}
-    form.Add("api_token", op.apiToken)
-    form.Add("data", jsonData)
-
-    resp, err := op.httpClient.PostForm(op.apiURL, form)
-    if err != nil {
-        log.Fatalf("Error sending POST request: %v", err)
-        return
-    }
-    defer resp.Body.Close()
-
-    bodyBytes, err := io.ReadAll(resp.Body)
-    if err != nil {
-        log.Printf("Error reading response body: %v", err)
-        return
-    }
-    body := string(bodyBytes)
-
-    if resp.StatusCode != http.StatusOK {
-        log.Printf("Received non-OK response: %d, response body: %s", resp.StatusCode, body)
-    } else {
-        log.Println("Data sent successfully and received OK response from the server.")
-    }
 }
