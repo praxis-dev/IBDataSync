@@ -1,33 +1,64 @@
 package orderprocessor
 
 import (
+	"context"
+	"encoding/json"
 	"log"
+	"os"
+	"time"
 
 	customorderid "sentinel/custom_orderid"
 	httpclient "sentinel/http_client"
 	ordercache "sentinel/order_cache"
+
+	"github.com/joho/godotenv"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type OrderProcessor struct {
-    apiToken   string
-    apiURL     string
-    httpClient httpclient.Client
-    apiClient *APIClient
+    apiToken        string
+    apiURL          string
+    httpClient      httpclient.Client
+    apiClient       *APIClient
+    mongoClient     *mongo.Client
+    mongoDatabase   string
+    mongoCollection string
 }
 
 func NewOrderProcessor(apiToken, apiURL string, httpClient httpclient.Client) *OrderProcessor {
+    err := godotenv.Load("../.env")
+    if err != nil {
+        log.Fatal("Error loading .env file")
+    }
+
+    mongoURI := os.Getenv("MONGO_URI")
+    mongoDatabase := os.Getenv("MONGO_DATABASE")
+    mongoCollection := os.Getenv("MONGO_COLLECTION")
+
     apiClient := NewAPIClient(apiToken, apiURL, httpClient)
 
-    return &OrderProcessor{
-        apiToken:   apiToken,
-        apiURL:     apiURL,
-        httpClient: httpClient,
-        apiClient: apiClient,
+    ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+    defer cancel()
 
+    mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoURI))
+    if err != nil {
+        log.Fatalf("Error connecting to MongoDB: %v", err)
+    }
+
+    return &OrderProcessor{
+        apiToken:        apiToken,
+        apiURL:          apiURL,
+        httpClient:      httpClient,
+        apiClient:       apiClient,
+        mongoClient:     mongoClient,
+        mongoDatabase:   mongoDatabase,
+        mongoCollection: mongoCollection,
     }
 }
 
 func (op *OrderProcessor) ProcessOrder(data []byte) {
+
     receivedData, err := UnmarshallData(data)
     if err != nil {
         log.Printf("Error unmarshalling received data: %v", err)
@@ -51,6 +82,27 @@ func (op *OrderProcessor) ProcessOrder(data []byte) {
     }
 
     op.apiClient.SendAPIRequest(modifiedData)
+    op.saveOrderToMongoDB(modifiedData)
+
+}
+
+func (op *OrderProcessor) saveOrderToMongoDB(orderData []byte) {
+    var data map[string]interface{}
+    err := json.Unmarshal(orderData, &data)
+    if err != nil {
+        log.Printf("Error unmarshalling order data: %v", err)
+        return
+    }
+
+    if testOrder, ok := data["order"].(map[string]interface{})["testOrder"].(bool); ok && !testOrder {
+        ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+        defer cancel()
+        collection := op.mongoClient.Database(op.mongoDatabase).Collection(op.mongoCollection)
+        _, err := collection.InsertOne(ctx, data)
+        if err != nil {
+            log.Printf("Error saving order to MongoDB: %v", err)
+        }
+    }
 }
 
 func (op *OrderProcessor) extractOrderDetails(receivedData map[string]interface{}) (int64, map[string]interface{}, bool) {
