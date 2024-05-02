@@ -21,24 +21,25 @@ var (
 )
 
 func main() {
+    err := godotenv.Load("../../.env")
+    if err != nil {
+        log.Fatal("Error loading .env file")
+    }
 
-	err := godotenv.Load("../../.env")
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
-
-	apiToken = os.Getenv("API_TOKEN")
+    apiToken = os.Getenv("API_TOKEN")
     apiURL = os.Getenv("API_URL")
     wsURL = os.Getenv("WS_URL")
+    mongoURI := os.Getenv("MONGO_URI")
+    mongoDatabase := os.Getenv("MONGO_DATABASE")
+    mongoCollection := os.Getenv("MONGO_COLLECTION")
 
-    if apiToken == "" || apiURL == "" || wsURL == "" {
-        log.Fatal("Environment variables API_TOKEN, API_URL, or WS_URL are not set")
+    if apiToken == "" || apiURL == "" || wsURL == "" || mongoURI == "" || mongoDatabase == "" || mongoCollection == "" {
+        log.Fatal("Environment variables API_TOKEN, API_URL, WS_URL, MONGO_URI, MONGO_DATABASE, or MONGO_COLLECTION are not set")
     }
-	e := echo.New()
 
+    e := echo.New()
     httpClient := httpclient.NewClient()
-
-    orderProcessor := orderprocessor.NewOrderProcessor(apiToken, apiURL, httpClient)
+    orderProcessor := orderprocessor.NewOrderProcessor(apiToken, apiURL, mongoURI, mongoDatabase, mongoCollection, httpClient)
 
 	messageChan := make(chan []byte)
 	go websocket.StartWebSocketClient(wsURL, messageChan)

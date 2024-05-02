@@ -4,14 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"log"
-	"os"
 	"time"
 
 	customorderid "sentinel/custom_orderid"
 	httpclient "sentinel/http_client"
 	ordercache "sentinel/order_cache"
 
-	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -26,16 +24,7 @@ type OrderProcessor struct {
     mongoCollection string
 }
 
-func NewOrderProcessor(apiToken, apiURL string, httpClient httpclient.Client) *OrderProcessor {
-    err := godotenv.Load("../.env")
-    if err != nil {
-        log.Fatal("Error loading .env file")
-    }
-
-    mongoURI := os.Getenv("MONGO_URI")
-    mongoDatabase := os.Getenv("MONGO_DATABASE")
-    mongoCollection := os.Getenv("MONGO_COLLECTION")
-
+func NewOrderProcessor(apiToken, apiURL, mongoURI, mongoDatabase, mongoCollection string, httpClient httpclient.Client) *OrderProcessor {
     apiClient := NewAPIClient(apiToken, apiURL, httpClient)
 
     ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
