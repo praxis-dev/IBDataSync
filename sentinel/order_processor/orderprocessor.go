@@ -83,16 +83,37 @@ func (op *OrderProcessor) saveOrderToMongoDB(orderData []byte) {
         return
     }
 
-    if testOrder, ok := data["order"].(map[string]interface{})["testOrder"].(bool); ok && !testOrder {
+    log.Printf("Received data for saving to MongoDB: %+v", data)
+
+    nestedData, ok := data["data"].(map[string]interface{})
+    if !ok {
+        log.Printf("Error: 'data' key is missing or not the expected type")
+        return
+    }
+
+    order, ok := nestedData["order"].(map[string]interface{})
+    if !ok {
+        log.Printf("Error: 'order' key is missing or not the expected type")
+        return
+    }
+
+    testOrder, ok := order["testOrder"].(bool)
+    if !ok {
+        log.Printf("Error: 'testOrder' key is missing or not the expected type")
+        return
+    }
+
+    if !testOrder {
         ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
         defer cancel()
         collection := op.mongoClient.Database(op.mongoDatabase).Collection(op.mongoCollection)
-        _, err := collection.InsertOne(ctx, data)
+        _, err := collection.InsertOne(ctx, nestedData)  // Inserting nestedData which contains the 'order'
         if err != nil {
             log.Printf("Error saving order to MongoDB: %v", err)
         }
     }
 }
+
 
 func (op *OrderProcessor) extractOrderDetails(receivedData map[string]interface{}) (int64, map[string]interface{}, bool) {
     if orderData, ok := receivedData["data"].(map[string]interface{}); ok {
@@ -109,16 +130,23 @@ func (op *OrderProcessor) processOrderData(receivedData map[string]interface{}) 
     newOrderId := customorderid.GenerateCustomOrderId()
 
     if orderData, ok := receivedData["data"].(map[string]interface{}); ok {
+        log.Printf("Original order data: %+v", orderData)
         orderData["orderId"] = newOrderId
 
         if order, ok := orderData["order"].(map[string]interface{}); ok {
+            log.Printf("Before modification order data: %+v", order)
             delete(order, "totalQuantity")
             order["percentageAllocation"] = 3.75
             order["testOrder"] = true
+            log.Printf("After modification order data: %+v", order)
+        } else {
+            log.Printf("Order key missing in received orderData")
         }
+    } else {
+        log.Printf("Data key missing in receivedData")
     }
 
     receivedData["command"] = "orderStatusNew"
-
+    log.Printf("Processed order data to be sent: %+v", receivedData)
     return receivedData
 }
