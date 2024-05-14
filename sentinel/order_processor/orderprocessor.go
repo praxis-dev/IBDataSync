@@ -136,8 +136,8 @@ func (op *OrderProcessor) processOrderData(receivedData map[string]interface{}) 
         if order, ok := orderData["order"].(map[string]interface{}); ok {
             log.Printf("Before modification order data: %+v", order)
             delete(order, "totalQuantity")
-            order["percentageAllocation"] = 3.75
-            order["testOrder"] = true
+            order["percentageAllocation"] = 7.5
+            order["testOrder"] = false
             log.Printf("After modification order data: %+v", order)
         } else {
             log.Printf("Order key missing in received orderData")
